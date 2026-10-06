@@ -53,13 +53,14 @@ miniaudio's own Web Audio device is either a deprecated `ScriptProcessorNode` or
 `MA_ENABLE_AUDIO_WORKLETS`, an `AudioWorklet` that needs wasm workers and shared memory, so a
 cross-origin isolated page (headers GitHub Pages cannot send). The port uses neither: on the web
 miniaudio is built with `MA_NO_DEVICE_IO` and only decodes, and the mixer plays through
-[`WebAudioOutput.cpp`](../../port/src/audio/WebAudioOutput.cpp), with its JavaScript in
-[`web_audio.js`](../../port/src/audio/web_audio.js) (the main thread, linked with `--js-library`) and
-[`audio-worklet.js`](../../port/web/audio-worklet.js) (the worklet, served beside the page):
+[`WebAudioOutput.cpp`](../../port/src/audio/WebAudioOutput.cpp), with its JavaScript beside it:
+[`WebAudioOutput.js`](../../port/src/audio/WebAudioOutput.js) on the main thread (linked with
+`--js-library`) and [`WebAudioWorklet.js`](../../port/src/audio/WebAudioWorklet.js) on the audio thread
+(installed beside the page):
 
 - An `AudioWorklet` that only plays: it keeps a queue of interleaved stereo blocks, writes them to its
   two output channels (silence when it runs dry) and posts back how many frames it has played.
-- The page's main thread mixes: a 10 ms timer calls `port_audio_render`, which runs `Mixer::mix`, and
+- The page's main thread mixes: a 10 ms timer calls `port_web_audio_mix`, which runs `Mixer::mix`, and
   sends the block to the worklet (transferred, not copied) until 80 ms are queued ahead of what has
   played. A long game frame eats into that margin instead of cutting the sound.
 - The `AudioContext` runs at the browser's rate (usually 48 kHz), which the mixer resamples to, and

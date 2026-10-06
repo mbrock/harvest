@@ -230,7 +230,7 @@ fn webSite(
     link.addArgs(&emscripten_link_flags);
     // The main-thread half of the audio output (audio/WebAudioOutput.cpp declares its functions).
     link.addArg("--js-library");
-    link.addFileArg(b.path("src/audio/web_audio.js"));
+    link.addFileArg(b.path("src/audio/WebAudioOutput.js"));
     link.addArgs(switch (optimize) {
         // The game code's UBSan checks call into the runtime Emscripten links with this.
         .Debug => &.{ "-g", "-fsanitize=undefined" },
@@ -244,6 +244,8 @@ fn webSite(
     const step = b.step("web", "Install the page, harvest.js and harvest.wasm");
     step.dependOn(&b.addInstallDirectory(.{ .source_dir = js.dirname(), .install_dir = .prefix, .install_subdir = "" }).step);
     step.dependOn(&b.addInstallDirectory(.{ .source_dir = b.path("web"), .install_dir = .prefix, .install_subdir = "" }).step);
+    // The audio output's worklet, which WebAudioOutput.js loads from beside the page.
+    step.dependOn(&b.addInstallFile(b.path("src/audio/WebAudioWorklet.js"), "WebAudioWorklet.js").step);
     return step;
 }
 
