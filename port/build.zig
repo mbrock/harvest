@@ -264,6 +264,9 @@ fn addTargetMacros(module: *std.Build.Module) void {
     // the CRT's legacy wide specifiers swap %s and %S, so every localized "%s" printed only the
     // first character of its argument.
     if (module.resolved_target.?.result.os.tag == .windows) module.addCMacro("__USE_MINGW_ANSI_STDIO", "1");
+    // On the web the mixer plays through its own AudioWorklet output (audio/WebAudioOutput.cpp), so
+    // miniaudio is only the decoder there; the header must agree with how miniaudio.c is built.
+    if (module.resolved_target.?.result.os.tag == .emscripten) module.addCMacro("MA_NO_DEVICE_IO", "1");
 }
 
 /// The .cpp files directly in tests/.
@@ -428,7 +431,8 @@ fn buildMiniaudio(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std
     const dep = b.dependency("miniaudio", .{});
     const module = cModule(b, target, optimize);
     module.addIncludePath(dep.path(""));
-    // gnu99: its Web Audio backend uses Emscripten's EM_ASM, which needs GNU extensions.
+    // Only the decoders on the web (see addTargetMacros).
+    if (target.result.os.tag == .emscripten) module.addCMacro("MA_NO_DEVICE_IO", "1");
     module.addCSourceFile(.{ .file = b.path("src/thirdparty/miniaudio.c"), .flags = &.{"-std=gnu99"} });
     // miniaudio loads the platform audio libraries at run time; on Linux that needs libdl.
     if (target.result.os.tag == .linux) {

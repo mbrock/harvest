@@ -96,7 +96,8 @@ public:
     Mixer();
     ~Mixer();
 
-    //! Opens and starts the default playback device (stereo, 32-bit float, its native rate).
+    //! Opens and starts the default playback device (stereo, 32-bit float, its native rate); on the
+    //! web, the page's AudioWorklet output (WebAudioOutput.h).
     bool openDevice();
     //! Mixes without a device: the caller pulls blocks with mix() at this rate (tests, rendering).
     void openOffline(unsigned int sampleRate);
@@ -129,12 +130,16 @@ public:
     Vec3 ListenerUp;
 
 private:
+#if !defined(MA_NO_DEVICE_IO)
     static void dataCallback(ma_device* device, void* output, const void* input, ma_uint32 frames);
+#endif
     //! The source's gain per output channel; for a stereo source, per source channel.
     void computeGains(const Source& source, unsigned int channels, float gains[2]) const;
     void mixSource(Source& source, float* output, ma_uint32 frames);
 
+#if !defined(MA_NO_DEVICE_IO)
     ma_device Device;
+#endif
     bool DeviceOpen;
     unsigned int SampleRate;
     volatile ma_spinlock Lock;

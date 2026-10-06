@@ -49,14 +49,19 @@ on `PATH`, 6.0.10 in CI) only provides the sysroot and links.
 
 ## Audio
 
-miniaudio uses its default Web Audio backend, a `ScriptProcessorNode`: deprecated, but in every
-browser, and it mixes on the page's main thread, so a long frame can crackle. Its `AudioWorklet`
-backend (`MA_ENABLE_AUDIO_WORKLETS`) would move the mixing off that thread, at a cost:
+miniaudio's own Web Audio device is either a deprecated `ScriptProcessorNode` or, with
+`MA_ENABLE_AUDIO_WORKLETS`, an `AudioWorklet` that needs wasm workers and shared memory, so a
+cross-origin isolated page (headers GitHub Pages cannot send). The port uses neither: on the web
+miniaudio is built with `MA_NO_DEVICE_IO` and only decodes, and the mixer plays through
+[`WebAudioOutput.cpp`](../../port/src/audio/WebAudioOutput.cpp):
 
-- links with `-sAUDIO_WORKLET -sWASM_WORKERS -sASYNCIFY` (a bigger, slower module);
-- shared memory, so everything is compiled with atomics, and the page must be cross-origin isolated
-  (`Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy` headers), which GitHub Pages
-  cannot send. A host with custom headers (Cloudflare Pages) or a service-worker shim would be needed.
+- An `AudioWorklet` that only plays: it keeps a queue of interleaved stereo blocks, writes them to its
+  two output channels (silence when it runs dry) and posts back how many frames it has played.
+- The page's main thread mixes: a 10 ms timer calls `port_audio_render`, which runs `Mixer::mix`, and
+  sends the block to the worklet (transferred, not copied) until 80 ms are queued ahead of what has
+  played. A long game frame eats into that margin instead of cutting the sound.
+- The `AudioContext` runs at the browser's rate (usually 48 kHz), which the mixer resamples to, and
+  starts on the first click or key press, as browsers require.
 
-The mixer already locks around the audio callback (it runs on its own thread on the desktop), so the
-game side is ready for it.
+No threads, no shared memory and no extra link settings. The JavaScript lives in the module (`EM_JS`),
+so the page needs nothing for it.

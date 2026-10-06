@@ -1,4 +1,5 @@
 #include "audio/Mixer.h"
+#include "audio/WebAudioOutput.h"
 #include <SDL3/SDL_log.h>
 #include <algorithm>
 #include <cmath>
@@ -116,6 +117,20 @@ Mixer::~Mixer()
     close();
 }
 
+#if defined(MA_NO_DEVICE_IO)
+bool Mixer::openDevice()
+{
+    SampleRate = startWebAudioOutput(this);
+    if (!SampleRate)
+    {
+        SDL_Log("cannot open an audio device: this browser has no Web Audio AudioWorklet");
+        return false;
+    }
+    DeviceOpen = true;
+    SDL_Log("audio: Web Audio AudioWorklet, %u Hz", SampleRate);
+    return true;
+}
+#else
 bool Mixer::openDevice()
 {
     ma_device_config config = ma_device_config_init(ma_device_type_playback);
@@ -144,6 +159,7 @@ bool Mixer::openDevice()
         SampleRate);
     return true;
 }
+#endif
 
 void Mixer::openOffline(unsigned int sampleRate)
 {
@@ -155,7 +171,11 @@ void Mixer::close()
 {
     if (DeviceOpen)
     {
+#if defined(MA_NO_DEVICE_IO)
+        stopWebAudioOutput();
+#else
         ma_device_uninit(&Device);
+#endif
         DeviceOpen = false;
     }
     SampleRate = 0;
@@ -187,10 +207,12 @@ void Mixer::setDistanceModel(int model)
         DistanceModel = model;
 }
 
+#if !defined(MA_NO_DEVICE_IO)
 void Mixer::dataCallback(ma_device* device, void* output, const void*, ma_uint32 frames)
 {
     static_cast<Mixer*>(device->pUserData)->mix(static_cast<float*>(output), frames);
 }
+#endif
 
 void Mixer::mix(float* output, ma_uint32 frames)
 {
