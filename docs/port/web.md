@@ -53,7 +53,9 @@ miniaudio's own Web Audio device is either a deprecated `ScriptProcessorNode` or
 `MA_ENABLE_AUDIO_WORKLETS`, an `AudioWorklet` that needs wasm workers and shared memory, so a
 cross-origin isolated page (headers GitHub Pages cannot send). The port uses neither: on the web
 miniaudio is built with `MA_NO_DEVICE_IO` and only decodes, and the mixer plays through
-[`WebAudioOutput.cpp`](../../port/src/audio/WebAudioOutput.cpp):
+[`WebAudioOutput.cpp`](../../port/src/audio/WebAudioOutput.cpp), with its JavaScript in
+[`web_audio.js`](../../port/src/audio/web_audio.js) (the main thread, linked with `--js-library`) and
+[`audio-worklet.js`](../../port/web/audio-worklet.js) (the worklet, served beside the page):
 
 - An `AudioWorklet` that only plays: it keeps a queue of interleaved stereo blocks, writes them to its
   two output channels (silence when it runs dry) and posts back how many frames it has played.
@@ -63,5 +65,4 @@ miniaudio is built with `MA_NO_DEVICE_IO` and only decodes, and the mixer plays 
 - The `AudioContext` runs at the browser's rate (usually 48 kHz), which the mixer resamples to, and
   starts on the first click or key press, as browsers require.
 
-No threads, no shared memory and no extra link settings. The JavaScript lives in the module (`EM_JS`),
-so the page needs nothing for it.
+No threads and no shared memory, and `index.html` needs nothing for it.

@@ -228,6 +228,9 @@ fn webSite(
     link.addArtifactArg(harvest_lib);
     for (libs.all()) |lib| link.addArtifactArg(lib);
     link.addArgs(&emscripten_link_flags);
+    // The main-thread half of the audio output (audio/WebAudioOutput.cpp declares its functions).
+    link.addArg("--js-library");
+    link.addFileArg(b.path("src/audio/web_audio.js"));
     link.addArgs(switch (optimize) {
         // The game code's UBSan checks call into the runtime Emscripten links with this.
         .Debug => &.{ "-g", "-fsanitize=undefined" },
